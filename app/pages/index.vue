@@ -210,15 +210,34 @@ const getCurrentLocation = () => {
             const street = address.road || address.street || address.pedestrian || address.path || ''
             
             // Try multiple ways to get house number
-            let houseNumber = address.house_number || ''
+            let houseNumber = address.house_number || address.housenumber || ''
+            
             if (!houseNumber) {
-              // Sometimes it's in the display_name or other fields
+              // Try to extract from display_name (format: "123 Street Name, City")
               const displayName = data.display_name || ''
-              const houseNumberMatch = displayName.match(/^(\d+[a-zA-Z]?)\s/)
+              let houseNumberMatch = displayName.match(/^(\d+[a-zA-Z]?)\s/)
+              
+              if (!houseNumberMatch) {
+                // Try alternative patterns
+                houseNumberMatch = displayName.match(/(\d+[a-zA-Z]?)\s+[A-Z]/)
+              }
+              
               if (houseNumberMatch) {
                 houseNumber = houseNumberMatch[1]
               }
             }
+            
+            // If still no house number, try from name field
+            if (!houseNumber && data.name) {
+              const nameMatch = data.name.match(/(\d+[a-zA-Z]?)/)
+              if (nameMatch) {
+                houseNumber = nameMatch[1]
+              }
+            }
+            
+            console.log('Address data:', address)
+            console.log('Display name:', data.display_name)
+            console.log('Found house number:', houseNumber)
             
             const postcode = address.postcode || address.postal_code || ''
             const city = address.city || address.town || address.village || address.municipality || address.hamlet || ''
