@@ -76,7 +76,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <!-- Street Name -->
               <div class="flex flex-col gap-2">
-                <label for="street" class="text-sm font-medium text-black">Street Name</label>
+                <label for="street" class="text-sm font-medium text-black after:content-['*'] after:text-red-500 after:ml-0.5">Street Name</label>
                 <input 
                   type="text" 
                   id="street"
@@ -94,9 +94,8 @@
                   type="text" 
                   id="houseNumber"
                   v-model="form.houseNumber"
-                  placeholder="E.g. 123A"
+                  placeholder="E.g. 123A (optional)"
                   class="px-3 py-2 border border-gray-300 rounded text-sm text-black transition-colors focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-100"
-                  required
                 >
               </div>
               
@@ -107,15 +106,14 @@
                   type="text" 
                   id="postcode"
                   v-model="form.postcode"
-                  placeholder="E.g. 1012 AB"
+                  placeholder="E.g. 1012 AB (optional)"
                   class="px-3 py-2 border border-gray-300 rounded text-sm text-black transition-colors focus:outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-100"
-                  required
                 >
               </div>
               
               <!-- City -->
               <div class="flex flex-col gap-2">
-                <label for="city" class="text-sm font-medium text-black">City</label>
+                <label for="city" class="text-sm font-medium text-black after:content-['*'] after:text-red-500 after:ml-0.5">City</label>
                 <input 
                   type="text" 
                   id="city"
@@ -175,8 +173,6 @@ const isFormValid = computed(() => {
   return form.value.whatHappened.length > 0 && 
          form.value.datetime && 
          form.value.street.trim() &&
-         form.value.houseNumber.trim() &&
-         form.value.postcode.trim() &&
          form.value.city.trim()
 })
 
@@ -215,29 +211,20 @@ const getCurrentLocation = () => {
             if (!houseNumber) {
               // Try to extract from display_name (format: "123 Street Name, City")
               const displayName = data.display_name || ''
-              let houseNumberMatch = displayName.match(/^(\d+[a-zA-Z]?)\s/)
               
-              if (!houseNumberMatch) {
-                // Try alternative patterns
-                houseNumberMatch = displayName.match(/(\d+[a-zA-Z]?)\s+[A-Z]/)
-              }
+              // Only look for house numbers at the very beginning, and only 1-4 digits
+              let houseNumberMatch = displayName.match(/^(\d{1,4}[a-zA-Z]?)\s/)
               
               if (houseNumberMatch) {
-                houseNumber = houseNumberMatch[1]
+                const potentialNumber = houseNumberMatch[1]
+                // Make sure it's not a postcode (postcodes are usually longer or have specific patterns)
+                if (potentialNumber.length <= 4 && !potentialNumber.match(/^\d{4}$/)) {
+                  houseNumber = potentialNumber
+                }
               }
             }
             
-            // If still no house number, try from name field
-            if (!houseNumber && data.name) {
-              const nameMatch = data.name.match(/(\d+[a-zA-Z]?)/)
-              if (nameMatch) {
-                houseNumber = nameMatch[1]
-              }
-            }
-            
-            console.log('Address data:', address)
-            console.log('Display name:', data.display_name)
-            console.log('Found house number:', houseNumber)
+
             
             const postcode = address.postcode || address.postal_code || ''
             const city = address.city || address.town || address.village || address.municipality || address.hamlet || ''
