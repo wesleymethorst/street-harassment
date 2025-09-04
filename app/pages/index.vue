@@ -6,7 +6,7 @@
         <!-- Header inside form -->
         <div class="text-center mb-8">
           <h1 class="text-2xl font-bold text-black mb-3">INCIDENT REPORT FORM</h1>
-          <p class="text-sm text-black leading-relaxed">We are happy that you reported this, but far from happy that this happened to you.</p>
+          <p class="text-sm text-black leading-relaxed">Thank you for reporting this incident.</p>
         </div>
         
         <form @submit.prevent="submitForm" class="flex flex-col gap-7">
@@ -55,11 +55,12 @@
           <div class="flex flex-col gap-4">
             <div class="flex items-center justify-between">
               <label class="text-lg font-semibold text-black after:content-['*'] after:text-red-500 after:ml-1">Where did it happen:</label>
-              <button 
+              <div class="flex">
+                <button 
                 type="button"
                 @click="getCurrentLocation"
                 :disabled="isGettingLocation"
-                class="px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded text-xs font-medium transition-colors whitespace-nowrap flex items-center gap-1.5"
+                class="px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-l text-xs font-medium transition-colors whitespace-nowrap flex items-center gap-1.5"
               >
                 <svg v-if="isGettingLocation" class="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -71,6 +72,18 @@
                 </svg>
                 {{ isGettingLocation ? 'Getting...' : 'Get Location' }}
               </button>
+              <button 
+                type="button"
+                @click="togglePinLocation"
+                class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-r text-xs font-medium transition-colors whitespace-nowrap flex items-center gap-1.5 -ml-px border-l border-blue-500"
+              >
+                <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 616 0z"></path>
+                </svg>
+                Pin Location
+                </button>
+              </div>
             </div>
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -126,6 +139,27 @@
             </div>
             
             <p v-if="locationError" class="text-red-600 text-xs">{{ locationError }}</p>
+            
+            <!-- Interactive Map for Pin Location -->
+            <div v-if="showMap" class="mt-4 border border-gray-300 rounded-lg overflow-hidden">
+              <div class="bg-gray-100 p-2 text-sm text-gray-600 flex justify-between items-center">
+                <span>Click on the map to pin your location</span>
+                <button 
+                  type="button"
+                  @click="closeMap"
+                  class="text-gray-500 hover:text-gray-700"
+                >
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                  </svg>
+                </button>
+              </div>
+              <div 
+                id="map" 
+                class="h-64 w-full cursor-crosshair"
+                @click="handleMapClick"
+              ></div>
+            </div>
           </div>
 
           <!-- Submit Button -->
@@ -145,7 +179,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 
 const form = ref({
   whatHappened: [],
@@ -159,6 +193,9 @@ const form = ref({
 
 const isGettingLocation = ref(false)
 const locationError = ref('')
+const showMap = ref(false)
+const map = ref(null)
+const marker = ref(null)
 
 const incidentTypes = [
   { value: 'sissing', label: 'Hissing' },
@@ -302,6 +339,133 @@ const getCurrentLocation = () => {
   )
 }
 
+const togglePinLocation = () => {
+  showMap.value = !showMap.value
+  
+  if (showMap.value) {
+    // Initialize map after DOM update
+    nextTick(() => {
+      initializeMap()
+    })
+  }
+}
+
+const closeMap = () => {
+  showMap.value = false
+  if (map.value) {
+    map.value.remove()
+    map.value = null
+  }
+}
+
+const initializeMap = () => {
+  if (typeof L === 'undefined') {
+    // Load Leaflet dynamically
+    const link = document.createElement('link')
+    link.rel = 'stylesheet'
+    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
+    document.head.appendChild(link)
+    
+    const script = document.createElement('script')
+    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+    script.onload = () => createMap()
+    document.head.appendChild(script)
+  } else {
+    createMap()
+  }
+}
+
+const createMap = () => {
+  // Default to Amsterdam center, or use current location if available
+  let defaultLat = 52.3676
+  let defaultLng = 4.9041
+  
+  // Try to get user's current location for initial map center
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition((position) => {
+      const { latitude, longitude } = position.coords
+      if (map.value) {
+        map.value.setView([latitude, longitude], 15)
+      }
+    }, () => {
+      // Fallback to default location if geolocation fails
+    })
+  }
+  
+  map.value = L.map('map').setView([defaultLat, defaultLng], 13)
+  
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors'
+  }).addTo(map.value)
+  
+  // Add click handler
+  map.value.on('click', handleMapClick)
+}
+
+const handleMapClick = async (e) => {
+  const { lat, lng } = e.latlng
+  
+  // Remove existing marker
+  if (marker.value) {
+    map.value.removeLayer(marker.value)
+  }
+  
+  // Add new marker
+  marker.value = L.marker([lat, lng]).addTo(map.value)
+  
+  // Reverse geocode the clicked location
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1&extratags=1&zoom=18&accept-language=en`
+    )
+    
+    if (response.ok) {
+      const data = await response.json()
+      
+      if (data && data.address) {
+        const address = data.address
+        
+        // Extract address components
+        const street = address.road || address.street || address.pedestrian || address.path || ''
+        let houseNumber = address.house_number || address.housenumber || ''
+        
+        // Try to extract house number from display name if not found
+        if (!houseNumber) {
+          const displayName = data.display_name || ''
+          const houseNumberMatch = displayName.match(/^(\d{1,4}[a-zA-Z]?)\s/)
+          
+          if (houseNumberMatch) {
+            const potentialNumber = houseNumberMatch[1]
+            if (potentialNumber.length <= 4 && !potentialNumber.match(/^\d{4}$/)) {
+              houseNumber = potentialNumber
+            }
+          }
+        }
+        
+        const postcode = address.postcode || address.postal_code || ''
+        const city = address.city || address.town || address.village || address.municipality || address.hamlet || ''
+        
+        // Fill in the form fields
+        form.value.street = street
+        form.value.houseNumber = houseNumber
+        form.value.postcode = postcode
+        form.value.city = city
+        
+        // Show success message
+        locationError.value = ''
+        
+        // Optionally close the map after selection
+        setTimeout(() => {
+          closeMap()
+        }, 1000)
+      }
+    }
+  } catch (error) {
+    console.error('Error reverse geocoding pinned location:', error)
+    locationError.value = 'Could not get address for pinned location. Please fill in manually.'
+  }
+}
+
 const submitForm = () => {
   if (isFormValid.value) {
     console.log('Form submitted:', form.value)
@@ -319,6 +483,7 @@ const submitForm = () => {
       city: ''
     }
     locationError.value = ''
+    closeMap()
   }
 }
 </script>
