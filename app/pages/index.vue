@@ -60,7 +60,7 @@
                 type="button"
                 @click="getCurrentLocation"
                 :disabled="isGettingLocation"
-                class="px-3 py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-l text-xs font-medium transition-colors whitespace-nowrap flex items-center gap-1.5"
+                class="px-1.5 md:px-3 py-0.5 md:py-1.5 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-l text-xs font-medium transition-colors whitespace-nowrap flex items-center gap-0.5 md:gap-1.5"
               >
                 <svg v-if="isGettingLocation" class="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -75,7 +75,7 @@
               <button 
                 type="button"
                 @click="togglePinLocation"
-                class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-r text-xs font-medium transition-colors whitespace-nowrap flex items-center gap-1.5 -ml-px border-l border-blue-500"
+                class="px-1.5 md:px-3 py-0.5 md:py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-r text-xs font-medium transition-colors whitespace-nowrap flex items-center gap-0.5 md:gap-1.5 -ml-px border-l border-blue-500"
               >
                 <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
