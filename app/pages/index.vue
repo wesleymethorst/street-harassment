@@ -166,10 +166,14 @@
           <div class="flex justify-center pt-4">
             <button 
               type="submit" 
-              class="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white px-10 py-3 rounded text-base font-semibold cursor-pointer transition-colors"
-              :disabled="!isFormValid"
+              class="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white px-10 py-3 rounded text-base font-semibold cursor-pointer transition-colors flex items-center justify-center gap-2"
+              :disabled="!isFormValid || isSubmitting"
             >
-              Submit Report
+              <svg v-if="isSubmitting" class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              {{ isSubmitting ? 'Submitting...' : 'Submit Report' }}
             </button>
           </div>
         </form>
@@ -180,6 +184,11 @@
 
 <script setup>
 import { ref, computed, nextTick } from 'vue'
+import PocketBase from 'pocketbase'
+
+// PocketBase client setup
+const config = useRuntimeConfig()
+const pb = new PocketBase(config.public.pocketbaseUrl)
 
 const form = ref({
   whatHappened: [],
@@ -196,6 +205,7 @@ const locationError = ref('')
 const showMap = ref(false)
 const map = ref(null)
 const marker = ref(null)
+const isSubmitting = ref(false)
 
 const incidentTypes = [
   { value: 'sissing', label: 'Hissing' },
@@ -466,13 +476,42 @@ const handleMapClick = async (e) => {
   }
 }
 
-const submitForm = () => {
-  if (isFormValid.value) {
-    console.log('Form submitted:', form.value)
-    // Here you would typically send the data to your backend
-    alert('Thank you for your report. We take this seriously and will review your submission.')
+const submitForm = async () => {
+  if (!isFormValid.value) return
+  
+  isSubmitting.value = true
+  
+  try {
+    // Prepare data for PocketBase (matching existing schema)
+    const data = {
+      type: JSON.stringify(form.value.whatHappened),
+      description: form.value.description,
+      date: form.value.datetime ? new Date(form.value.datetime).toISOString() : null,
+      streetname: form.value.street,
+      housenumber: form.value.houseNumber || '',
+      postal: form.value.postcode || '',
+      city: form.value.city
+    }
     
-    // Reset form
+    // Debug: log de data die we gaan versturen
+    console.log('Submitting data to PocketBase:', data)
+    console.log('Form values:', form.value)
+    console.log('Date field specifically:', {
+      original: form.value.datetime,
+      type: typeof form.value.datetime,
+      inData: data.date,
+      dateObject: new Date(form.value.datetime)
+    })
+    
+    // Submit to PocketBase
+    const record = await pb.collection('form_responses').create(data)
+    
+    console.log('Record created successfully:', record)
+    
+    // Success message
+    alert('Report Submitted Successfully! Thank you for reporting this incident.')
+    
+    // Reset form after successful submission
     form.value = {
       whatHappened: [],
       description: '',
@@ -484,6 +523,14 @@ const submitForm = () => {
     }
     locationError.value = ''
     closeMap()
+    
+  } catch (error) {
+    console.error('Error submitting form:', error)
+    
+    // Error message
+    alert('Failed to submit the report. Please check your connection and try again.')
+  } finally {
+    isSubmitting.value = false
   }
 }
 </script>
